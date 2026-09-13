@@ -20,6 +20,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Fixed
 
 - The Homepage dashboard has links for Lidarr and SABnzbd.
+- The CI secret scan runs. Before, a shell quoting error stopped it.
 
 ## [0.1.0] - 2026-09-13
 

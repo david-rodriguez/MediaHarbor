@@ -26,6 +26,10 @@ jobs:
           docker run --rm -v "$PWD:/src:ro" "$image" sh -c 'apk add --no-cache restic age tar >/dev/null && python -B /src/tests/smoke_recovery.py'
       - name: Scan Git history for secrets
         uses: docker://zricethezav/gitleaks:v8.30.1
+        # Docker actions split args on spaces and ignore shell quotes, so pass Git config through env.
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: safe.directory
+          GIT_CONFIG_VALUE_0: /github/workspace
         with:
-          entrypoint: /bin/sh
-          args: -c 'git config --global --add safe.directory /github/workspace && gitleaks git /github/workspace --redact --no-banner'
+          args: git /github/workspace --redact --no-banner
