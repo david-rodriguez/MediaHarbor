@@ -1,0 +1,291 @@
+name: mediaharbor
+
+x-common: &common
+  restart: unless-stopped
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-lsio-env: &lsio-env
+  PUID: ${PUID:-1000}
+  PGID: ${PGID:-1000}
+  TZ: ${TZ:-America/New_York}
+  UMASK: "002"
+
+services:
+  gluetun:
+    <<: *common
+    image: qmcgaw/gluetun:latest@sha256:6bdf70ced4f3ea33b9091f3af7a710b47be003673b6ea94abfeed3343a580d8c
+    cap_add: [NET_ADMIN]
+    devices: [/dev/net/tun:/dev/net/tun]
+    environment:
+      TZ: ${TZ:-America/New_York}
+      VPN_SERVICE_PROVIDER: protonvpn
+      VPN_TYPE: wireguard
+      WIREGUARD_PRIVATE_KEY_SECRETFILE: /run/secrets/wireguard_private_key
+      SERVER_COUNTRIES: ${PROTON_COUNTRIES:-Netherlands}
+      PORT_FORWARD_ONLY: "on"
+      VPN_PORT_FORWARDING: "on"
+      VPN_PORT_FORWARDING_STATUS_FILE: /forwarded/port
+      VPN_PORT_FORWARDING_DOWN_COMMAND: /bin/sh -c 'rm -f /forwarded/port'
+      FIREWALL_INPUT_PORTS: "8080"
+      HEALTH_SERVER_ADDRESS: 127.0.0.1:9999
+    secrets: [wireguard_private_key]
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/gluetun:/gluetun
+      - forwarded:/forwarded
+      - ${HARBOR_ROOT:-.}/config/gluetun/post-rules.txt:/iptables/post-rules.txt:ro
+    ports: [127.0.0.1:8080:8080]
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
+    # Keep the image's built-in VPN healthcheck and firewall defaults.
+
+  qbittorrent:
+    <<: *common
+    image: lscr.io/linuxserver/qbittorrent:latest@sha256:8d48fa8c619caadfb103f04efea8747e2a2762d6c7551690919cffb987e61cee
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    environment:
+      <<: *lsio-env
+      WEBUI_PORT: "8080"
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/qbittorrent:/config
+      - ${DATA_ROOT:?Set DATA_ROOT}:/data
+    healthcheck:
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:8080/]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  port-sync:
+    <<: *common
+    image: python:3.14-alpine@sha256:c6ead215bfd31f1e433d968853b7a769989117115b728874824e6c0a27cb96fc
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+      qbittorrent:
+        condition: service_started
+    user: ${PUID:-1000}:${PGID:-1000}
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: [/tmp:size=1m,mode=1777]
+    command: [python, -B, /app/port_sync.py]
+    volumes:
+      - ${HARBOR_ROOT:-.}/scripts/port_sync.py:/app/port_sync.py:ro
+      - forwarded:/forwarded:ro
+    secrets: [qbit_username, qbit_password]
+    healthcheck:
+      test: [CMD, python, -c, "import pathlib,time; p=pathlib.Path('/tmp/sync-health'); exit(0 if p.exists() and time.time()-p.stat().st_mtime < 120 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  sonarr:
+    <<: *common
+    image: lscr.io/linuxserver/sonarr:latest@sha256:82172b363f9eddc02aca544f880a044f2ceb9aaf190bc87e4454e2f705eb91d0
+    environment: *lsio-env
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/sonarr:/config
+      - ${DATA_ROOT:?Set DATA_ROOT}:/data
+    ports: [127.0.0.1:8989:8989]
+
+  radarr:
+    <<: *common
+    image: lscr.io/linuxserver/radarr:latest@sha256:95ba0801df4d9d1d79d0d9a3849f656542497dab061d91b87ad4f53a71aff3ef
+    environment: *lsio-env
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/radarr:/config
+      - ${DATA_ROOT:?Set DATA_ROOT}:/data
+    ports: [127.0.0.1:7878:7878]
+
+  prowlarr:
+    <<: *common
+    image: lscr.io/linuxserver/prowlarr:latest@sha256:c7502a75b021d964481c129c84590b9cbc40f83aadd4e553f173871bc0deaa3c
+    environment: *lsio-env
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/prowlarr:/config
+    ports: [127.0.0.1:9696:9696]
+
+  bazarr:
+    <<: *common
+    image: lscr.io/linuxserver/bazarr:latest@sha256:84b6f05a7a4194fafe5a0bec062d32f6ae9ea74db33d43d678cb9a3191f31c24
+    environment: *lsio-env
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/bazarr:/config
+      - ${DATA_ROOT:?Set DATA_ROOT}/media:/data/media
+    ports: [127.0.0.1:6767:6767]
+
+  seerr:
+    <<: *common
+    image: ghcr.io/seerr-team/seerr:latest@sha256:f4768de5f616248d723e05891f3345a1402123775d03bf0890dbfedc0831bda1
+    init: true
+    environment:
+      TZ: ${TZ:-America/New_York}
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/seerr:/app/config
+    ports: [127.0.0.1:5055:5055]
+    healthcheck:
+      test: [CMD, wget, --no-verbose, --tries=1, --spider, http://127.0.0.1:5055/api/v1/settings/public]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  plex:
+    <<: *common
+    image: lscr.io/linuxserver/plex:latest@sha256:1f6f97d76e7bdb013789e94c838f2d9133b01ee4b2d4194148e492c4e4f12d90
+    environment:
+      <<: *lsio-env
+      VERSION: docker
+      # One-time claim token from https://plex.tv/claim; ignored after the server is claimed.
+      FILE__PLEX_CLAIM: /run/secrets/plex_claim
+    secrets: [plex_claim]
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/plex:/config
+      - ${DATA_ROOT:?Set DATA_ROOT}/media:/data/media:ro
+    # The only port published beyond loopback: Plex authenticates every client itself.
+    ports: ["32400:32400"]
+
+  jellyfin:
+    <<: *common
+    image: lscr.io/linuxserver/jellyfin:latest@sha256:0f42497a69fa0441bfd5f9d6bba8694f2a656ec984e571d0ac04c6dd91250039
+    profiles: [jellyfin]
+    environment: *lsio-env
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/jellyfin:/config
+      - ${DATA_ROOT:?Set DATA_ROOT}/media:/data/media:ro
+    ports: [127.0.0.1:8096:8096]
+
+  lidarr:
+    <<: *common
+    image: lscr.io/linuxserver/lidarr:latest@sha256:8ab0fd370b604ae034d9a9c261a9d8d873bece33d9736852e7ce4f3566e4a35d
+    profiles: [lidarr]
+    environment: *lsio-env
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/lidarr:/config
+      - ${DATA_ROOT:?Set DATA_ROOT}:/data
+    ports: [127.0.0.1:8686:8686]
+
+  sabnzbd:
+    <<: *common
+    image: lscr.io/linuxserver/sabnzbd:latest@sha256:948ea3dc45d68943ec14b33ba37ffa1488da3e9837bf3ca0f75621e971614d85
+    profiles: [sabnzbd]
+    environment: *lsio-env
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/sabnzbd:/config
+      - ${DATA_ROOT:?Set DATA_ROOT}:/data
+    ports: [127.0.0.1:8081:8080]
+
+  bookshelf:
+    <<: *common
+    # Readarr revival; the hardcover tag uses Hardcover metadata.
+    image: ghcr.io/pennydreadful/bookshelf:hardcover@sha256:67498dd5ece516867d72ee642abd6c1a66b36a135c8f7da0127109564372beb1
+    profiles: [bookshelf]
+    environment: *lsio-env
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/bookshelf:/config
+      - ${DATA_ROOT:?Set DATA_ROOT}:/data
+    ports: [127.0.0.1:8787:8787]
+
+  audiobookshelf:
+    <<: *common
+    image: ghcr.io/advplyr/audiobookshelf:latest@sha256:180acad33d69c99ed208676465d8edcb268fa46967735579a7810859885b1a8e
+    profiles: [audiobookshelf]
+    user: ${PUID:-1000}:${PGID:-1000}
+    environment:
+      TZ: ${TZ:-America/New_York}
+      # Non-root processes cannot bind the image's default port 80.
+      PORT: "13378"
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/audiobookshelf:/config
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/audiobookshelf-metadata:/metadata
+      - ${DATA_ROOT:?Set DATA_ROOT}/media/audiobooks:/audiobooks:ro
+    ports: [127.0.0.1:13378:13378]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:13378/healthcheck]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  homepage:
+    <<: *common
+    image: ghcr.io/gethomepage/homepage:latest@sha256:f820276654539cdc2cf0169f28188d135919a7984fad76d83d8d5ff1383f3705
+    profiles: [homepage]
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: ${HOMEPAGE_ALLOWED_HOSTS:-localhost:3000}
+      HOMEPAGE_VAR_BASE_URL: ${HOMEPAGE_VAR_BASE_URL:-https://mediaharbor.example-tailnet.ts.net}
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/homepage:/app/config
+    ports: [127.0.0.1:3000:3000]
+
+  tautulli:
+    <<: *common
+    image: lscr.io/linuxserver/tautulli:latest@sha256:e35570d636471f8aabfac7044057712679f954844a763ba735baa9659ea142b5
+    profiles: [tautulli]
+    environment: *lsio-env
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/tautulli:/config
+    ports: [127.0.0.1:8181:8181]
+
+  flaresolverr:
+    <<: *common
+    image: ghcr.io/flaresolverr/flaresolverr:latest@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767
+    profiles: [flaresolverr]
+    environment:
+      TZ: ${TZ:-America/New_York}
+
+  recyclarr:
+    <<: *common
+    image: ghcr.io/recyclarr/recyclarr:8@sha256:6e69e009e1cd7493ff6093e8e187b5d3788c75b4a2c0c5127b6a1beda1c19728
+    profiles: [recyclarr]
+    user: ${PUID:-1000}:${PGID:-1000}
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CRON_SCHEDULE: "@daily"
+    volumes:
+      - ${APPDATA_ROOT:?Set APPDATA_ROOT}/recyclarr:/config
+
+  unpackerr:
+    <<: *common
+    image: ghcr.io/unpackerr/unpackerr:latest@sha256:406586865431b40b29353d899fb75a788f5384743f7f381444db5fe55d206914
+    profiles: [unpackerr]
+    user: ${PUID:-1000}:${PGID:-1000}
+    environment:
+      TZ: ${TZ:-America/New_York}
+      UN_SONARR_0_URL: http://sonarr:8989
+      UN_SONARR_0_API_KEY: filepath:/run/secrets/sonarr_api_key
+      UN_SONARR_0_PATHS_0: /data/torrents/tv
+      UN_RADARR_0_URL: http://radarr:7878
+      UN_RADARR_0_API_KEY: filepath:/run/secrets/radarr_api_key
+      UN_RADARR_0_PATHS_0: /data/torrents/movies
+    secrets: [sonarr_api_key, radarr_api_key]
+    volumes:
+      - ${DATA_ROOT:?Set DATA_ROOT}:/data
+
+secrets:
+  wireguard_private_key:
+    file: ${HARBOR_ROOT:-.}/secrets/wireguard_private_key
+  qbit_username:
+    file: ${HARBOR_ROOT:-.}/secrets/qbit_username
+  qbit_password:
+    file: ${HARBOR_ROOT:-.}/secrets/qbit_password
+  plex_claim:
+    file: ${HARBOR_ROOT:-.}/secrets/plex_claim
+  sonarr_api_key:
+    file: ${HARBOR_ROOT:-.}/secrets/sonarr_api_key
+  radarr_api_key:
+    file: ${HARBOR_ROOT:-.}/secrets/radarr_api_key
+
+volumes:
+  forwarded:

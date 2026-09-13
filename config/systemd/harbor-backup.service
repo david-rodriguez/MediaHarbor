@@ -1,0 +1,14 @@
+[Unit]
+Description=Encrypted MediaHarbor application backup
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/mediaharbor
+EnvironmentFile=/etc/mediaharbor/backup.env
+ExecStart=/opt/mediaharbor/harbor backup
+# Allow a slow backup to finish; interruption can leave apps stopped.
+TimeoutStartSec=infinity
+UMask=0077

@@ -1,0 +1,42 @@
+- Watch:
+    - Plex:
+        href: https://app.plex.tv
+        description: Watch
+    - Seerr:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}'
+        description: Requests
+    - Tautulli:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:8181'
+        description: Plex activity (optional)
+    - Jellyfin:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:8096'
+        description: Playback (optional)
+    - Audiobookshelf:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:13378'
+        description: Audiobooks (optional)
+- Library:
+    - Sonarr:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:8989'
+        description: TV
+    - Radarr:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:7878'
+        description: Movies
+    - Lidarr:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:8686'
+        description: Music (optional)
+    - Bookshelf:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:8787'
+        description: Audiobooks (optional)
+    - Bazarr:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:6767'
+        description: Subtitles
+- Downloads:
+    - qBittorrent:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:8443'
+        description: Proton VPN downloads
+    - SABnzbd:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:8081'
+        description: Usenet downloads (optional)
+    - Prowlarr:
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:9696'
+        description: Indexers

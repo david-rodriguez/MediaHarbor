@@ -1,0 +1,1 @@
+iptables -I INPUT 1 -i tun0 -p tcp -m multiport --dports 8000,8080 -j DROP

@@ -1,0 +1,31 @@
+name: Validate
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate templates and deployment policy
+        run: ./harbor check --example
+      - name: Unit tests
+        run: python3 -m unittest discover -s tests
+      - name: Gluetun firewall startup
+        run: python3 tests/smoke_gluetun.py
+      - name: Real qBittorrent API integration
+        run: python3 tests/smoke_qbittorrent.py
+      - name: Real encrypted recovery round trip
+        run: |
+          image=$(docker compose --env-file config/host.env.example -f docker-compose.yml config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["port-sync"]["image"])')
+          docker run --rm -v "$PWD:/src:ro" "$image" sh -c 'apk add --no-cache restic age tar >/dev/null && python -B /src/tests/smoke_recovery.py'
+      - name: Scan Git history for secrets
+        uses: docker://zricethezav/gitleaks:v8.30.1
+        with:
+          entrypoint: /bin/sh
+          args: -c 'git config --global --add safe.directory /github/workspace && gitleaks git /github/workspace --redact --no-banner'
