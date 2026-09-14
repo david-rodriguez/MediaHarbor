@@ -77,9 +77,12 @@ services:
     user: ${PUID:-1000}:${PGID:-1000}
     cap_drop: [ALL]
     read_only: true
-    tmpfs: [/tmp:size=1m,mode=1777]
     command: [python, -B, /app/port_sync.py]
     volumes:
+      # Long syntax: Compose splits the short tmpfs form at commas.
+      - type: tmpfs
+        target: /tmp
+        tmpfs: {size: 1m, mode: 01777}
       - ${HARBOR_ROOT:-.}/scripts/port_sync.py:/app/port_sync.py:ro
       - forwarded:/forwarded:ro
     secrets: [qbit_username, qbit_password]

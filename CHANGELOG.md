@@ -21,6 +21,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - The Homepage dashboard has links for Lidarr and SABnzbd.
 - The CI secret scan runs. Before, a shell quoting error stopped it.
+- `port-sync` starts on current Compose releases. Before, Compose split its `/tmp` options at the comma and refused to create the container.
 
 ## [0.1.0] - 2026-09-13
 
