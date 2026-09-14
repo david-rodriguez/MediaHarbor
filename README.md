@@ -63,29 +63,117 @@ See [SECURITY.md](SECURITY.md) to report a problem.
 
 ## Requirements
 
-- Linux on amd64 or arm64, with your media disks mounted.
+- Linux on amd64 or arm64, with your media disk mounted by UUID. This project does not format disks or set up RAID, ZFS, SMB or NFS.
 - Docker Engine **28+** and Compose **2.24+**.
 - Python **3.10+**.
-- Tailscale on the host.
+- Tailscale on the host, signed in with `sudo tailscale up`.
 - A paid Proton VPN plan with P2P port forwarding.
 - A Plex account. Plex Pass is optional (it adds hardware transcoding).
 - `restic` and `age` for backups.
 
 ## Set it up
 
-1. Clone this repository to `/opt/mediaharbor`. Mount your storage by UUID. Create the data folder on that disk. This project does not format disks or set up RAID, ZFS, SMB or NFS.
-2. Run `./harbor init`. Edit `config/host.env`: set your media user and group IDs, timezone, storage paths and Proton country. Remove the optional apps you do not want from `COMPOSE_PROFILES`.
-3. In Proton, make a WireGuard configuration with **NAT-PMP (port forwarding)** on. Put only its `PrivateKey` in `secrets/wireguard_private_key`. Put a qBittorrent username and a strong password in `secrets/qbit_username` and `secrets/qbit_password`. You set the same account in qBittorrent in step 5.
-4. Run `./harbor check`, then `sudo ./harbor prepare`. Then run `./harbor compose up -d gluetun qbittorrent`.
-5. Follow [private access](docs/access.md) to log in to qBittorrent for the first time and lock it down.
-6. Get a claim token from <https://plex.tv/claim>. It expires in 4 minutes. Put it in `secrets/plex_claim` and run `./harbor compose up -d plex`. Open Plex through an SSH tunnel and add the Plex libraries from the [library folders](docs/operations.md#library-folders) table.
-7. Run `./harbor compose up -d`. Set a password in each app. Then connect the apps with the [app connections](docs/operations.md#app-connections) table.
-8. [Share with friends and family](docs/sharing.md): Plex library access, Seerr logins, Watchlist auto-requests and audiobooks.
-9. Set up [encrypted backups](docs/recovery.md) and do one restore drill.
+Run every command on the server. Do the steps in order.
 
-Before you download anything real, run the [deployment checks](docs/operations.md#deployment-checks).
+### 1. Get the files
 
-Use `./harbor compose ...` instead of plain `docker compose`. The wrapper picks the right Compose file and settings, and ignores stray `COMPOSE_*` variables. To run the apps from Portainer instead, follow [Portainer stacks](docs/portainer.md). Run `./harbor check` after you change the configuration.
+```sh
+sudo mkdir /opt/mediaharbor
+sudo chown "$USER": /opt/mediaharbor
+git clone https://github.com/david-rodriguez/MediaHarbor.git /opt/mediaharbor
+cd /opt/mediaharbor
+./harbor init
+```
+
+`init` creates `config/host.env` and the `secrets/` folder. Git ignores both.
+
+### 2. Fill in your settings
+
+Open the settings file:
+
+```sh
+nano config/host.env
+```
+
+Change these lines:
+
+| Setting | What to put |
+| --- | --- |
+| `PUID` and `PGID` | The output of `id -u` and `id -g` |
+| `TZ` | Your timezone, for example `America/New_York` |
+| `APPDATA_ROOT` | A folder for app settings, for example `/srv/mediaharbor/appdata` |
+| `DATA_ROOT` | A folder on your media disk |
+| `PROTON_COUNTRIES` | A VPN country, for example `Netherlands` |
+| `COMPOSE_PROFILES` | Delete the optional apps that you do not want |
+| `HOMEPAGE_ALLOWED_HOSTS` | Your Tailscale name plus `:3000`. Run `tailscale status --json \| grep DNSName` to see the name. |
+| `HOMEPAGE_VAR_BASE_URL` | `https://` plus your Tailscale name |
+
+Leave `HARBOR_ROOT` commented out, unless you use Portainer.
+
+### 3. Add your VPN key and qBittorrent password
+
+1. On the Proton VPN website, open **Downloads > WireGuard configuration**. Pick **Linux**, turn on **NAT-PMP (port forwarding)** and download the file.
+2. Open that file. Copy the text after `PrivateKey = `.
+3. Paste it into the key file, then save:
+
+   ```sh
+   nano secrets/wireguard_private_key
+   ```
+
+4. Make a qBittorrent password:
+
+   ```sh
+   openssl rand -base64 24 > secrets/qbit_password
+   ```
+
+The qBittorrent username is `admin`, from `secrets/qbit_username`.
+
+### 4. Check and prepare
+
+```sh
+./harbor check
+sudo ./harbor prepare
+```
+
+If `check` prints a problem, fix it and run `check` again. `prepare` creates the app and media folders.
+
+> **Portainer users:** stop here and follow [Portainer stacks](docs/portainer.md).
+
+### 5. Start the VPN and qBittorrent
+
+```sh
+./harbor compose up -d gluetun qbittorrent
+```
+
+Log in to qBittorrent and lock it down with [private access](docs/access.md#first-login-with-ssh). Set its account to the username and password in `secrets/`.
+
+### 6. Start Plex
+
+1. Get a claim token from <https://plex.tv/claim>. It works for 4 minutes only.
+2. At once, run this with your token:
+
+   ```sh
+   echo 'claim-YOUR-TOKEN' > secrets/plex_claim
+   ./harbor compose up -d plex
+   ```
+
+3. Open Plex through the [SSH tunnel](docs/access.md#first-login-with-ssh). Add the Plex libraries from the [library folders](docs/operations.md#library-folders) table.
+
+### 7. Start everything else
+
+```sh
+./harbor compose up -d
+```
+
+Set a password in each app. Then connect the apps with the [app connections](docs/operations.md#app-connections) table.
+
+### 8. Before you download anything real
+
+1. Run the [deployment checks](docs/operations.md#deployment-checks).
+2. Set up [encrypted backups](docs/recovery.md) and do one restore drill.
+3. Optional: [share with friends and family](docs/sharing.md).
+
+Always use `./harbor compose` instead of plain `docker compose`. The wrapper picks the right Compose file and settings. Run `./harbor check` after you change a setting.
 
 ## Folder layout
 
