@@ -25,7 +25,7 @@ In qBittorrent's settings:
 - Turn off UPnP/NAT-PMP and random listening ports.
 - Keep Web UI authentication, Host header validation and CSRF protection on.
 - Leave "Bypass authentication for clients on localhost" and "for clients in whitelisted IP subnets" **off**. The port helper logs in over localhost.
-- Add the server's full Tailscale DNS name to **Server domains** before you use Serve.
+- Set **Server domains** to `localhost;127.0.0.1;YOUR-TAILSCALE-NAME`. Keep `localhost` and `127.0.0.1`: the port helper and the SSH tunnel use them, and qBittorrent rejects every other name with `Unauthorized`.
 
 ## HTTPS with Tailscale Serve
 
@@ -33,6 +33,7 @@ Tailscale Serve gives each app an HTTPS address on your Tailscale network. [READ
 
 - HTTPS certificates put the server's Tailscale name in public certificate transparency logs. Pick a name that tells nothing private.
 - Each app uses its root URL, so leave **URL Base** empty everywhere.
+- Each link uses the same port as its app. qBittorrent rejects a request whose port differs from its own port, 8080.
 - For Homepage, use the full Tailscale name in `config/host.env`. Do not use `*` for allowed hosts. Remove links for apps that you do not use.
 - If qBittorrent rejects requests through Serve, turn on its reverse proxy support. Trust only the proxy address shown in its logs. Do not turn off its protections.
 
@@ -46,7 +47,7 @@ The default Tailscale policy lets every tailnet member reach every port. Replace
     "mediaharbor": "100.x.y.z"
   },
   "grants": [
-    { "src": ["autogroup:admin"], "dst": ["mediaharbor"], "ip": ["tcp:22", "tcp:443", "tcp:8443", "tcp:8989", "tcp:7878", "tcp:9696", "tcp:6767"] },
+    { "src": ["autogroup:admin"], "dst": ["mediaharbor"], "ip": ["tcp:22", "tcp:443", "tcp:8080", "tcp:8989", "tcp:7878", "tcp:9696", "tcp:6767"] },
     { "src": ["autogroup:shared"], "dst": ["mediaharbor"], "ip": ["tcp:443"] }
   ]
 }

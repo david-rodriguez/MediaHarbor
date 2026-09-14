@@ -32,7 +32,7 @@
         description: Subtitles
 - Downloads:
     - qBittorrent:
-        href: '{{HOMEPAGE_VAR_BASE_URL}}:8443'
+        href: '{{HOMEPAGE_VAR_BASE_URL}}:8080'
         description: Proton VPN downloads
     - SABnzbd:
         href: '{{HOMEPAGE_VAR_BASE_URL}}:8081'

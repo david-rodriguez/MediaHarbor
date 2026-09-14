@@ -103,8 +103,7 @@ Tailscale gives your own devices private, secure links to the apps.
 
    ```sh
    sudo tailscale serve --bg --https=443 http://127.0.0.1:5055
-   sudo tailscale serve --bg --https=8443 http://127.0.0.1:8080
-   for port in 8989 7878 9696 6767 8181 8096 8686 8081 8787 13378 3000; do
+   for port in 8080 8989 7878 9696 6767 8181 8096 8686 8081 8787 13378 3000; do
      sudo tailscale serve --bg --https=$port http://127.0.0.1:$port
    done
    ```
@@ -117,7 +116,7 @@ Tailscale gives your own devices private, secure links to the apps.
 
 5. Install Tailscale on your phone and computer. Sign in with the same account.
 
-Seerr opens at `https://YOUR-TAILSCALE-NAME`, and qBittorrent at `https://YOUR-TAILSCALE-NAME:8443`. Every other app opens at its port from the [What runs](#what-runs) table. If other people use your Tailscale network, [limit who can reach the server](docs/access.md#limit-who-can-reach-the-server).
+Seerr opens at `https://YOUR-TAILSCALE-NAME`. Every other app opens at its port from the [What runs](#what-runs) table, for example qBittorrent at `https://YOUR-TAILSCALE-NAME:8080`. If other people use your Tailscale network, [limit who can reach the server](docs/access.md#limit-who-can-reach-the-server).
 
 ### 3. Fill in your settings
 
