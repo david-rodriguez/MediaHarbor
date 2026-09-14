@@ -115,6 +115,8 @@ def prepare():
     gid = int(spec['services']['sonarr']['environment']['PGID'])
     for name, service in spec['services'].items():
         for volume in service.get('volumes', []):
+            if volume['type'] != 'bind':
+                continue
             path = Path(volume['source'])
             if path.parent == appdata and not path.exists():
                 path.mkdir(parents=True, mode=0o750)

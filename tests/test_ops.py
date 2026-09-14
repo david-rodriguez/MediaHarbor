@@ -57,6 +57,20 @@ class OpsTests(unittest.TestCase):
         with patch.object(self.mod, 'model') as model:
             with self.assertRaisesRegex(ValueError, r'\[NEW-STRONG-PASSWORD\] in secrets/qbit_password'): self.mod.check()
         model.assert_not_called()
+    def test_prepare_creates_folders_and_skips_mounts_without_a_host_path(self):
+        appdata, data = self.root/'appdata', self.root/'data'; data.mkdir()
+        (self.root/'secrets').mkdir(); (self.root/'config/homepage').mkdir()
+        for name in ['qbit_username', 'qbit_password', 'sonarr_api_key', 'radarr_api_key']: (self.root/'secrets'/name).write_text('')
+        spec = {'services': {
+            'sonarr': {'environment': {'PUID': '1000', 'PGID': '1000'}, 'volumes': [
+                {'type': 'bind', 'source': str(appdata/'sonarr'), 'target': '/config'},
+                {'type': 'bind', 'source': str(data), 'target': '/data'}]},
+            'port-sync': {'volumes': [{'type': 'tmpfs', 'target': '/tmp'}, {'type': 'volume', 'source': 'forwarded', 'target': '/forwarded'}]}}}
+        with patch.object(self.mod.sys, 'platform', 'linux'), patch.object(self.mod.os, 'geteuid', return_value=0), \
+                patch.object(self.mod, 'check'), patch.object(self.mod, 'model', return_value=spec), patch.object(self.mod.os, 'chown'):
+            self.mod.prepare()
+        self.assertTrue((appdata/'sonarr').is_dir())
+        self.assertTrue((data/'media/audiobooks').is_dir())
     def test_restore_refuses_existing_destination(self):
         (self.root/'important').write_text('keep')
         with self.assertRaises(ValueError): self.mod.restore('latest', self.root)
