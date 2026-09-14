@@ -137,8 +137,9 @@ Change these lines:
 | `DATA_ROOT` | A folder on your media disk |
 | `PROTON_COUNTRIES` | A VPN country, for example `Netherlands` |
 | `COMPOSE_PROFILES` | Delete the optional apps that you do not want |
-| `HOMEPAGE_ALLOWED_HOSTS` | Your Tailscale name from step 2, plus `:3000` |
-| `HOMEPAGE_VAR_BASE_URL` | `https://` plus your Tailscale name |
+| `HOMEPAGE_ALLOWED_HOSTS` and `HOMEPAGE_VAR_BASE_URL` | Replace `[YOUR-TAILSCALE-NAME]` with the name from step 2, for example `nas.tail1234.ts.net`. Keep `:3000` and `https://`. |
+
+A value in square brackets, such as `[YOUR-TAILSCALE-NAME]`, is a placeholder. `./harbor check` stops until you replace each one.
 
 Leave `HARBOR_ROOT` commented out, unless you use Portainer.
 

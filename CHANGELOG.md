@@ -9,7 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Optional audiobooks: Bookshelf finds and downloads them, Audiobookshelf plays them.
 - Optional Portainer stack deployment. Set `HARBOR_ROOT` to the host clone so the stack finds `secrets/`, the Gluetun rules and `port_sync.py`.
-- `harbor check` fails while `config/host.env` or `secrets/` still contain `[PLACEHOLDER]`.
+- `harbor check` fails while `config/host.env` or `secrets/` still hold a placeholder in square brackets, such as `[YOUR-TAILSCALE-NAME]`, and names the one to replace.
 
 ### Changed
 

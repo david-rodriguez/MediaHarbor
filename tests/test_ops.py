@@ -53,9 +53,9 @@ class OpsTests(unittest.TestCase):
                 with self.assertRaises(ValueError): self.mod.check(example=True)
     def test_check_refuses_placeholders(self):
         self.mod.initialize()
-        (self.root/'secrets/qbit_password').write_text('[PLACEHOLDER]\n')
+        (self.root/'secrets/qbit_password').write_text('[NEW-STRONG-PASSWORD]\n')
         with patch.object(self.mod, 'model') as model:
-            with self.assertRaisesRegex(ValueError, 'secrets/qbit_password'): self.mod.check()
+            with self.assertRaisesRegex(ValueError, r'\[NEW-STRONG-PASSWORD\] in secrets/qbit_password'): self.mod.check()
         model.assert_not_called()
     def test_restore_refuses_existing_destination(self):
         (self.root/'important').write_text('keep')

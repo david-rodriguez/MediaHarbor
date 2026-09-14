@@ -6,6 +6,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -14,6 +15,8 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 CORE_SECRETS = ['wireguard_private_key', 'qbit_username', 'qbit_password']
 OPTIONAL_SECRETS = ['plex_claim', 'sonarr_api_key', 'radarr_api_key']
+# A template value the user must replace, such as [YOUR-TAILSCALE-NAME].
+PLACEHOLDER = re.compile(r'\[[A-Z][A-Z0-9-]*\]')
 # Plex authenticates its own clients; every other port stays on loopback.
 PUBLIC_PORTS = {('plex', '32400')}
 
@@ -57,8 +60,8 @@ def initialize():
 def check(example=False):
     if not example:
         for path in [ROOT/'config/host.env', *sorted((ROOT/'secrets').glob('*'))]:
-            if '[PLACEHOLDER]' in path.read_text():
-                raise ValueError(f'Replace [PLACEHOLDER] in {path.relative_to(ROOT)}')
+            if placeholder := PLACEHOLDER.search(path.read_text()):
+                raise ValueError(f'Replace {placeholder[0]} in {path.relative_to(ROOT)}')
     spec = model(example)
     for name, service in spec['services'].items():
         if '@sha256:' not in service['image']:
