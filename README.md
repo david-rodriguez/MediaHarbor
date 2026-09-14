@@ -66,7 +66,7 @@ See [SECURITY.md](SECURITY.md) to report a problem.
 - Linux on amd64 or arm64, with your media disk mounted by UUID. This project does not format disks or set up RAID, ZFS, SMB or NFS.
 - Docker Engine **28+** and Compose **2.24+**.
 - Python **3.10+**.
-- Tailscale on the host, signed in with `sudo tailscale up`.
+- A free Tailscale account.
 - A paid Proton VPN plan with P2P port forwarding.
 - A Plex account. Plex Pass is optional (it adds hardware transcoding).
 - `restic` and `age` for backups.
@@ -87,7 +87,39 @@ cd /opt/mediaharbor
 
 `init` creates `config/host.env` and the `secrets/` folder. Git ignores both.
 
-### 2. Fill in your settings
+### 2. Set up Tailscale
+
+Tailscale gives your own devices private, secure links to the apps.
+
+1. Install Tailscale and sign in. Open the link that `tailscale up` prints.
+
+   ```sh
+   curl -fsSL https://tailscale.com/install.sh | sh
+   sudo tailscale up
+   ```
+
+2. In the Tailscale admin console, open [DNS](https://login.tailscale.com/admin/dns). Turn on **MagicDNS** and **HTTPS Certificates**.
+3. Create the app links:
+
+   ```sh
+   sudo tailscale serve --bg --https=443 http://127.0.0.1:5055
+   sudo tailscale serve --bg --https=8443 http://127.0.0.1:8080
+   for port in 8989 7878 9696 6767 8181 8096 8686 8081 8787 13378 3000; do
+     sudo tailscale serve --bg --https=$port http://127.0.0.1:$port
+   done
+   ```
+
+4. Show the server's Tailscale name. You need it for your settings in the next step.
+
+   ```sh
+   tailscale status --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))'
+   ```
+
+5. Install Tailscale on your phone and computer. Sign in with the same account.
+
+Seerr opens at `https://YOUR-TAILSCALE-NAME`, and qBittorrent at `https://YOUR-TAILSCALE-NAME:8443`. Every other app opens at its port from the [What runs](#what-runs) table. If other people use your Tailscale network, [limit who can reach the server](docs/access.md#limit-who-can-reach-the-server).
+
+### 3. Fill in your settings
 
 Open the settings file:
 
@@ -105,12 +137,12 @@ Change these lines:
 | `DATA_ROOT` | A folder on your media disk |
 | `PROTON_COUNTRIES` | A VPN country, for example `Netherlands` |
 | `COMPOSE_PROFILES` | Delete the optional apps that you do not want |
-| `HOMEPAGE_ALLOWED_HOSTS` | Your Tailscale name plus `:3000`. Run `tailscale status --json \| grep DNSName` to see the name. |
+| `HOMEPAGE_ALLOWED_HOSTS` | Your Tailscale name from step 2, plus `:3000` |
 | `HOMEPAGE_VAR_BASE_URL` | `https://` plus your Tailscale name |
 
 Leave `HARBOR_ROOT` commented out, unless you use Portainer.
 
-### 3. Add your VPN key and qBittorrent password
+### 4. Add your VPN key and qBittorrent password
 
 1. On the Proton VPN website, open **Downloads > WireGuard configuration**. Pick **Linux**, turn on **NAT-PMP (port forwarding)** and download the file.
 2. Open that file. Copy the text after `PrivateKey = `.
@@ -128,7 +160,7 @@ Leave `HARBOR_ROOT` commented out, unless you use Portainer.
 
 The qBittorrent username is `admin`, from `secrets/qbit_username`.
 
-### 4. Check and prepare
+### 5. Check and prepare
 
 ```sh
 ./harbor check
@@ -139,7 +171,7 @@ If `check` prints a problem, fix it and run `check` again. `prepare` creates the
 
 > **Portainer users:** stop here and follow [Portainer stacks](docs/portainer.md).
 
-### 5. Start the VPN and qBittorrent
+### 6. Start the VPN and qBittorrent
 
 ```sh
 ./harbor compose up -d gluetun qbittorrent
@@ -147,7 +179,7 @@ If `check` prints a problem, fix it and run `check` again. `prepare` creates the
 
 Log in to qBittorrent and lock it down with [private access](docs/access.md#first-login-with-ssh). Set its account to the username and password in `secrets/`.
 
-### 6. Start Plex
+### 7. Start Plex
 
 1. Get a claim token from <https://plex.tv/claim>. It works for 4 minutes only.
 2. At once, run this with your token:
@@ -159,7 +191,7 @@ Log in to qBittorrent and lock it down with [private access](docs/access.md#firs
 
 3. Open Plex through the [SSH tunnel](docs/access.md#first-login-with-ssh). Add the Plex libraries from the [library folders](docs/operations.md#library-folders) table.
 
-### 7. Start everything else
+### 8. Start everything else
 
 ```sh
 ./harbor compose up -d
@@ -167,7 +199,7 @@ Log in to qBittorrent and lock it down with [private access](docs/access.md#firs
 
 Set a password in each app. Then connect the apps with the [app connections](docs/operations.md#app-connections) table.
 
-### 8. Before you download anything real
+### 9. Before you download anything real
 
 1. Run the [deployment checks](docs/operations.md#deployment-checks).
 2. Set up [encrypted backups](docs/recovery.md) and do one restore drill.

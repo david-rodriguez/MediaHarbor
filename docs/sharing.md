@@ -45,7 +45,7 @@ Seerr is not on the public internet. Share it through Tailscale:
 
 1. In the Tailscale admin console, open **Machines**, select this server and choose **Share**.
 2. Send the invite link. The friend installs Tailscale and accepts the invite.
-3. The friend opens `https://YOUR-SERVER-NAME` (the Seerr Serve mapping from [access](access.md)).
+3. The friend opens `https://YOUR-SERVER-NAME` (the Seerr link from [README step 2](../README.md#2-set-up-tailscale)).
 
 A shared user can only reach the one machine you share. Limit them to Seerr's port too, in your tailnet policy file. Replace the IP with this server's Tailscale IP:
 

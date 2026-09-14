@@ -103,7 +103,7 @@ Remove `--dry-run` and add `--prune` only when the result matches what you want.
 3. Run `./harbor restore SNAPSHOT_ID /srv/recovery/restore`. The target folder must **not** exist. Restore never overwrites live appdata.
 4. restic keeps the original absolute paths under the target. `/srv/mediaharbor/appdata` becomes `/srv/recovery/restore/srv/mediaharbor/appdata`, and `/opt/mediaharbor/secrets` becomes `/srv/recovery/restore/opt/mediaharbor/secrets`. Look before you copy.
 5. With all apps stopped, copy appdata, `config/host.env` and `secrets/` into place with `sudo rsync -a` to keep ownership. Move old appdata aside first; never merge SQLite files. Fix paths in `host.env` if disks moved.
-6. Run `./harbor check`, then `sudo ./harbor prepare`. Seerr needs UID/GID 1000; the other apps use your configured IDs. Enroll Tailscale again and reapply Serve mappings and the access policy.
+6. Run `./harbor check`, then `sudo ./harbor prepare`. Seerr needs UID/GID 1000; the other apps use your configured IDs. Repeat [README step 2](../README.md#2-set-up-tailscale) to enroll Tailscale and create the app links again. Then reapply the [access policy](access.md#limit-who-can-reach-the-server).
 7. Start Gluetun and qBittorrent. Check the VPN. Then start the rest. Check requests, indexers, library paths, Plex playback and torrents. Record the snapshot ID and result.
 
 `restic check` proves the repository is intact, not that the apps work. Only a real restore drill proves that.
