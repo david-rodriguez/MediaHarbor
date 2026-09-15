@@ -29,6 +29,8 @@ The Plex connection in Sonarr and Radarr tells Plex to scan as soon as a file is
 | Plex libraries | `/data/media/tv`, `/data/media/movies`, `/data/media/music` |
 | Audiobookshelf library | `/audiobooks` |
 
+In qBittorrent, set **Settings > Downloads > Default Save Path** to `/data/torrents`. The image default, `/downloads`, does not exist in this setup, so the automation apps cannot import from it.
+
 qBittorrent, SABnzbd and the four automation apps share one `/data` mount, so imports use hardlinks when both folders are on the same filesystem. Separate ZFS datasets or mounts break hardlinks even if the paths look close. No remote path mapping is needed. Plex, Jellyfin and Audiobookshelf get read-only media access. Bazarr can write subtitles next to media.
 
 ### Audiobooks
