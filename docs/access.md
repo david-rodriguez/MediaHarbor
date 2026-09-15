@@ -25,7 +25,7 @@ In qBittorrent's settings:
 - Turn off UPnP/NAT-PMP and random listening ports.
 - Keep Web UI authentication, Host header validation and CSRF protection on.
 - Leave "Bypass authentication for clients on localhost" and "for clients in whitelisted IP subnets" **off**. The port helper logs in over localhost.
-- Set **Server domains** to `localhost;127.0.0.1;YOUR-TAILSCALE-NAME`. Keep `localhost` and `127.0.0.1`: the port helper and the SSH tunnel use them, and qBittorrent rejects every other name with `Unauthorized`.
+- Set **Server domains** to `localhost;127.0.0.1;gluetun;YOUR-TAILSCALE-NAME`. The SSH tunnel uses `localhost`, the port helper uses `127.0.0.1`, and the Arr apps use `gluetun`. qBittorrent rejects every other name with `Unauthorized`.
 
 ## HTTPS with Tailscale Serve
 
