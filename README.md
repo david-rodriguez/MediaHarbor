@@ -52,19 +52,19 @@ Core apps always run. Each optional app has a Compose profile of the same name. 
 ## Security model
 
 - Every admin port binds to `127.0.0.1`. You reach them over Tailscale or an SSH tunnel.
-- Plex port 32400 is the only port open to the network. Plex signs in every client itself.
+- Plex port 32400 is the only port open to the network. Plex signs in every client itself. Docker writes its own firewall rules for this port, so host firewalls such as UFW do not filter it.
 - qBittorrent shares the VPN container's network. If the VPN drops, its traffic stops.
 - No container gets the Docker socket. The self-healing timer runs on the host as root instead.
 - No default passwords and no automatic container updates.
 - Every image is pinned to a digest. Renovate proposes updates for you to review.
-- Credentials live in ignored files under `secrets/`, mounted as Compose secrets.
-- `./harbor check` enforces these rules. CI runs it with a secret scan.
+- Credentials live in ignored files under `secrets/` with mode `0600`, mounted as Compose secrets.
+- `./harbor check` enforces these rules. CI runs it and scans the full Git history for secrets.
 
 See [SECURITY.md](SECURITY.md) to report a problem.
 
 ## Requirements
 
-- Linux on amd64 or arm64, with your media disk mounted by UUID. This project does not format disks or set up RAID, ZFS, SMB or NFS.
+- Linux with systemd, on amd64 or arm64, with your media disk mounted by UUID. This project does not format disks or set up RAID, ZFS, SMB or NFS.
 - Docker Engine **28+** and Compose **2.24+**.
 - Python **3.10+**.
 - A free Tailscale account.

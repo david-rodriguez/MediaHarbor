@@ -59,7 +59,7 @@ Some releases arrive as `.rar` archives. The `unpackerr` profile extracts them b
 
 ## Hardware transcoding
 
-Plex Pass can transcode with an Intel or AMD GPU. Add the device to the `plex` service in a local `compose.override.yaml` (Git ignores it), then add that file to the wrapper from the repository root:
+Plex Pass can transcode with an Intel or AMD GPU. Add the device to the `plex` service in a local `compose.override.yaml`. Git ignores that file. Then pass it to the wrapper from the repository root:
 
 ```yaml
 services:
