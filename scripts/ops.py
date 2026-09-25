@@ -4,13 +4,17 @@ import argparse
 import base64
 import fcntl
 import json
+import logging
 import os
 from pathlib import Path
 import re
 import shutil
+import socket
+import stat
 import subprocess
 import sys
 import tempfile
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE_SECRETS = ['wireguard_private_key', 'qbit_username', 'qbit_password']
@@ -19,15 +23,17 @@ OPTIONAL_SECRETS = ['plex_claim', 'sonarr_api_key', 'radarr_api_key']
 PLACEHOLDER = re.compile(r'\[[A-Z][A-Z0-9-]*\]')
 # Plex authenticates its own clients; every other port stays on loopback.
 PUBLIC_PORTS = {('plex', '32400')}
+# Written by prepare into every appdata and data folder a container mounts, so heal can tell a mounted disk from an empty mount point.
+MARKER = '.mediaharbor'
 
 
-def run(args, *, capture=False, env=None):
-    result = subprocess.run([str(arg) for arg in args], cwd=ROOT, env=env,
+def run(args, *, capture=False, env=None, timeout=None):
+    result = subprocess.run([str(arg) for arg in args], cwd=ROOT, env=env, timeout=timeout,
                             check=True, text=True, stdout=subprocess.PIPE if capture else None)
     return result.stdout if capture else ''
 
 
-def compose(*args, example=False, capture=False):
+def compose(*args, example=False, capture=False, timeout=None):
     env = dict(os.environ)
     keys = {line.split('=', 1)[0] for line in (ROOT/'config/host.env.example').read_text().splitlines() if '=' in line and not line.startswith('#')}
     for key in list(env):
@@ -35,11 +41,11 @@ def compose(*args, example=False, capture=False):
             env.pop(key)
     config = ROOT/'config'/('host.env.example' if example else 'host.env')
     return run(['docker', 'compose', '--project-directory', ROOT, '--env-file', config,
-                '-f', ROOT/'docker-compose.yml', *args], capture=capture, env=env)
+                '-f', ROOT/'docker-compose.yml', *args], capture=capture, env=env, timeout=timeout)
 
 
-def model(example=False):
-    return json.loads(compose('--profile', '*', 'config', '--format', 'json', example=example, capture=True))
+def model(example=False, timeout=None):
+    return json.loads(compose('--profile', '*', 'config', '--format', 'json', example=example, capture=True, timeout=timeout))
 
 
 def initialize():
@@ -103,6 +109,23 @@ def roots(spec):
     return appdata, data
 
 
+def markers(spec):
+    """Every bind mount under a storage root, as (service, host source, container target)."""
+    found, storage = [], roots(spec)
+    for name, service in spec['services'].items():
+        for volume in service.get('volumes', []):
+            if volume['type'] != 'bind':
+                continue
+            source = Path(volume['source'])
+            if any(root == source or root in source.parents for root in storage):
+                found.append((name, source, volume['target']))
+    return found
+
+
+def on_system_filesystem(path):
+    return path.stat().st_dev == Path('/').stat().st_dev
+
+
 def prepare():
     if sys.platform != 'linux' or os.geteuid() != 0:
         raise ValueError('Run prepare as root on the target Linux NAS after mounting storage')
@@ -135,6 +158,25 @@ def prepare():
         if not target.exists():
             shutil.copyfile(template, target)
             os.chown(target, uid, gid)
+    for _, source, _ in markers(spec):
+        marker = source/MARKER
+        if marker.is_symlink():
+            raise ValueError(f'{marker} is a symlink; remove it before running prepare')
+        if source.is_dir():
+            # Never follow a link or block on a pipe planted by an app: the folder belongs to the media user, prepare runs as root.
+            try:
+                fd = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o644)
+            except OSError as error:
+                raise ValueError(f'{marker} is not a regular file; remove it before running prepare') from error
+            try:
+                if not stat.S_ISREG(os.fstat(fd).st_mode):
+                    raise ValueError(f'{marker} is not a regular file; remove it before running prepare')
+                os.fchmod(fd, 0o644)
+            finally:
+                os.close(fd)
+    for root in (appdata, data):
+        if on_system_filesystem(root):
+            print(f'Warning: {root} is on the system filesystem. If a separate disk belongs there, mount it and run prepare again.')
     print('Directories prepared. Existing appdata ownership was not modified.')
 
 
@@ -155,6 +197,7 @@ def _backup():
     running = compose('ps', '--status', 'running', '--services', capture=True).split()
     try:
         if running:
+            # The same grace heal.GRACE gives a restart.
             compose('stop', '--timeout', '120', *running)
         # Never capture databases while a stack service is still writing.
         if compose('ps', '--status', 'running', '--services', capture=True).strip():
@@ -175,6 +218,32 @@ def restore(snapshot, target):
     target.mkdir(parents=True, mode=0o700)
     run(['restic', 'restore', snapshot, '--tag', 'mediaharbor', '--target', target])
     print(f'Restored into {target}. Follow docs/recovery.md to inspect and install the recovered files.')
+
+
+def reachable(port):
+    """True when anything answers on the host's loopback port before one deadline, whatever it says.
+
+    One deadline for the whole exchange, no redirect and no proxy, so only this port is tested and a
+    slow app cannot hold the run. A connection closed without a byte counts as unreachable: that is
+    what Docker's port proxy does when it cannot reach the container.
+    """
+    deadline = time.monotonic() + 5
+    try:
+        with socket.create_connection(('127.0.0.1', port), timeout=5) as connection:
+            connection.sendall(b'GET / HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n')
+            connection.settimeout(max(deadline - time.monotonic(), 0.1))
+            return connection.recv(1) != b''
+    except OSError:
+        return False
+
+
+def heal(dry_run=False):
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s %(message)s')
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import heal as healing
+    spec = model(timeout=healing.DOCKER_TIMEOUT)
+    marks = [(service, source/MARKER, f'{target}/{MARKER}') for service, source, target in markers(spec)]
+    return healing.Healer(spec, marks, compose, run, reachable, ROOT/'.local').heal(dry_run=dry_run)
 
 
 def export_secrets(recipient, output):
@@ -209,6 +278,8 @@ def main():
     sub.add_parser('backup')
     recovery = sub.add_parser('restore'); recovery.add_argument('snapshot'); recovery.add_argument('target')
     export = sub.add_parser('export-secrets'); export.add_argument('recipient'); export.add_argument('output')
+    healer = sub.add_parser('heal', help='restart services that are running but broken')
+    healer.add_argument('--dry-run', action='store_true', help='report what would be restarted without changing anything')
     dc = sub.add_parser('compose'); dc.add_argument('args', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.action == 'init': initialize()
@@ -217,12 +288,13 @@ def main():
     elif args.action == 'backup': backup()
     elif args.action == 'restore': restore(args.snapshot, args.target)
     elif args.action == 'export-secrets': export_secrets(args.recipient, args.output)
+    elif args.action == 'heal': heal(args.dry_run)
     elif args.action == 'compose': compose(*args.args)
 
 
 if __name__ == '__main__':
     try:
         main()
-    except (ValueError, RuntimeError, OSError, subprocess.CalledProcessError) as error:
+    except (ValueError, RuntimeError, OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
         print(f'harbor: {error}', file=sys.stderr)
         sys.exit(1)

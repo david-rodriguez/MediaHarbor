@@ -1,0 +1,12 @@
+[Unit]
+Description=Check MediaHarbor health
+
+[Timer]
+OnBootSec=3min
+# The healer repairs a fault only when two runs in a row see it. This interval must stay longer than
+# Gluetun's own VPN reconnect, so the healer does not interrupt that.
+OnUnitActiveSec=2min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target
