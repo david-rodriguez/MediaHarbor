@@ -34,6 +34,10 @@ backups/
 *.db-*
 *.sqlite*
 
+# Design notes and plans stay local
+docs/design/
+docs/plans/
+
 # Local Compose overrides
 compose.override.yaml
 compose.override.yml

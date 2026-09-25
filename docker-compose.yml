@@ -15,6 +15,13 @@ x-lsio-env: &lsio-env
   TZ: ${TZ:-America/New_York}
   UMASK: "002"
 
+# Each app answers its own health URL. When it stops answering, Docker marks it unhealthy and harbor heal restarts it.
+x-healthcheck: &healthcheck
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 60s
+
 services:
   gluetun:
     <<: *common
@@ -58,11 +65,8 @@ services:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/qbittorrent:/config
       - ${DATA_ROOT:?Set DATA_ROOT}:/data
     healthcheck:
+      <<: *healthcheck
       test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:8080/]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
 
   port-sync:
     <<: *common
@@ -87,11 +91,8 @@ services:
       - forwarded:/forwarded:ro
     secrets: [qbit_username, qbit_password]
     healthcheck:
+      <<: *healthcheck
       test: [CMD, python, -c, "import pathlib,time; p=pathlib.Path('/tmp/sync-health'); exit(0 if p.exists() and time.time()-p.stat().st_mtime < 120 else 1)"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
 
   sonarr:
     <<: *common
@@ -101,6 +102,9 @@ services:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/sonarr:/config
       - ${DATA_ROOT:?Set DATA_ROOT}:/data
     ports: [127.0.0.1:8989:8989]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:8989/ping]
 
   radarr:
     <<: *common
@@ -110,6 +114,9 @@ services:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/radarr:/config
       - ${DATA_ROOT:?Set DATA_ROOT}:/data
     ports: [127.0.0.1:7878:7878]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:7878/ping]
 
   prowlarr:
     <<: *common
@@ -118,6 +125,9 @@ services:
     volumes:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/prowlarr:/config
     ports: [127.0.0.1:9696:9696]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:9696/ping]
 
   bazarr:
     <<: *common
@@ -127,6 +137,9 @@ services:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/bazarr:/config
       - ${DATA_ROOT:?Set DATA_ROOT}/media:/data/media
     ports: [127.0.0.1:6767:6767]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:6767/ping]
 
   seerr:
     <<: *common
@@ -138,11 +151,8 @@ services:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/seerr:/app/config
     ports: [127.0.0.1:5055:5055]
     healthcheck:
+      <<: *healthcheck
       test: [CMD, wget, --no-verbose, --tries=1, --spider, http://127.0.0.1:5055/api/v1/settings/public]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
 
   plex:
     <<: *common
@@ -158,6 +168,11 @@ services:
       - ${DATA_ROOT:?Set DATA_ROOT}/media:/data/media:ro
     # The only port published beyond loopback: Plex authenticates every client itself.
     ports: ["32400:32400"]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:32400/identity]
+      # Database migrations after an upgrade can take minutes.
+      start_period: 5m
 
   jellyfin:
     <<: *common
@@ -168,6 +183,9 @@ services:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/jellyfin:/config
       - ${DATA_ROOT:?Set DATA_ROOT}/media:/data/media:ro
     ports: [127.0.0.1:8096:8096]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:8096/health]
 
   lidarr:
     <<: *common
@@ -178,6 +196,9 @@ services:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/lidarr:/config
       - ${DATA_ROOT:?Set DATA_ROOT}:/data
     ports: [127.0.0.1:8686:8686]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:8686/ping]
 
   sabnzbd:
     <<: *common
@@ -188,6 +209,9 @@ services:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/sabnzbd:/config
       - ${DATA_ROOT:?Set DATA_ROOT}:/data
     ports: [127.0.0.1:8081:8080]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, "http://127.0.0.1:8080/api?mode=version"]
 
   bookshelf:
     <<: *common
@@ -199,6 +223,9 @@ services:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/bookshelf:/config
       - ${DATA_ROOT:?Set DATA_ROOT}:/data
     ports: [127.0.0.1:8787:8787]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:8787/ping]
 
   audiobookshelf:
     <<: *common
@@ -215,11 +242,8 @@ services:
       - ${DATA_ROOT:?Set DATA_ROOT}/media/audiobooks:/audiobooks:ro
     ports: [127.0.0.1:13378:13378]
     healthcheck:
+      <<: *healthcheck
       test: [CMD, wget, -q, --spider, http://127.0.0.1:13378/healthcheck]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
 
   homepage:
     <<: *common
@@ -231,6 +255,9 @@ services:
     volumes:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/homepage:/app/config
     ports: [127.0.0.1:3000:3000]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:3000/api/healthcheck]
 
   tautulli:
     <<: *common
@@ -240,6 +267,9 @@ services:
     volumes:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/tautulli:/config
     ports: [127.0.0.1:8181:8181]
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:8181/status]
 
   flaresolverr:
     <<: *common
@@ -247,6 +277,9 @@ services:
     profiles: [flaresolverr]
     environment:
       TZ: ${TZ:-America/New_York}
+    healthcheck:
+      <<: *healthcheck
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:8191/health]
 
   recyclarr:
     <<: *common

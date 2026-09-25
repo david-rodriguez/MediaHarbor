@@ -1,0 +1,13 @@
+[Unit]
+Description=Restart MediaHarbor services that are running but broken
+# Requisite, not Requires: never start Docker on the operator's behalf.
+Requisite=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/mediaharbor
+ExecStart=/opt/mediaharbor/harbor heal
+# A backstop for a hung Docker daemon. RUN_BUDGET in scripts/heal.py is the run's own limit.
+TimeoutStartSec=30min
+UMask=0077

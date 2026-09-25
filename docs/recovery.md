@@ -75,6 +75,8 @@ Run `restic init` only once, to create the repository. `harbor backup` then:
 
 Apps are down while the backup uploads, so plan a quiet time. Plex metadata can be large; the first backup takes longest. If the process is killed, the machine shuts down or Docker fails, the apps may stay stopped: check them afterwards. Do not run updates during a backup.
 
+The healer makes no restart while a backup runs. It also does not start apps that a backup left stopped, because it cannot tell them from apps you stopped yourself. A backup that starts during a healer restart fails once. The failure shows in `journalctl -u harbor-backup`.
+
 Not in the backup: media and downloads in `DATA_ROOT`, `/etc/fstab`, Tailscale enrollment and `/etc/mediaharbor`. Protect those separately.
 
 After a good manual backup and restore drill, install the nightly timer. Change `/opt/mediaharbor` in the unit if your checkout lives elsewhere.
@@ -99,11 +101,11 @@ Remove `--dry-run` and add `--prune` only when the result matches what you want.
 ## Restore drill and full rebuild
 
 1. Install Linux, mount the media disks in their usual places, and install Docker, Compose, Python, Tailscale, restic and age. Restore SSH and storage credentials from the kit.
-2. Clone the Git commit that matches the snapshot. Do not start the apps yet. Export the restic variables. Run `restic snapshots --tag mediaharbor` and pick a snapshot ID.
+2. Clone the Git commit that matches the snapshot. Do not start the apps yet, and stop the healer if it is installed: `sudo systemctl stop harbor-heal.timer`. Export the restic variables. Run `restic snapshots --tag mediaharbor` and pick a snapshot ID.
 3. Run `./harbor restore SNAPSHOT_ID /srv/recovery/restore`. The target folder must **not** exist. Restore never overwrites live appdata.
 4. restic keeps the original absolute paths under the target. `/srv/mediaharbor/appdata` becomes `/srv/recovery/restore/srv/mediaharbor/appdata`, and `/opt/mediaharbor/secrets` becomes `/srv/recovery/restore/opt/mediaharbor/secrets`. Look before you copy.
 5. With all apps stopped, copy appdata, `config/host.env` and `secrets/` into place with `sudo rsync -a` to keep ownership. Move old appdata aside first; never merge SQLite files. Fix paths in `host.env` if disks moved.
 6. Run `./harbor check`, then `sudo ./harbor prepare`. Seerr needs UID/GID 1000; the other apps use your configured IDs. Repeat [README step 2](../README.md#2-set-up-tailscale) to enroll Tailscale and create the app links again. Then reapply the [access policy](access.md#limit-who-can-reach-the-server).
-7. Start Gluetun and qBittorrent. Check the VPN. Then start the rest. Check requests, indexers, library paths, Plex playback and torrents. Record the snapshot ID and result.
+7. Start Gluetun and qBittorrent. Check the VPN. Then start the rest. Check requests, indexers, library paths, Plex playback and torrents. Record the snapshot ID and result. If the healer is installed, start it again: `sudo systemctl start harbor-heal.timer`.
 
 `restic check` proves the repository is intact, not that the apps work. Only a real restore drill proves that.

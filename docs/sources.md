@@ -31,6 +31,11 @@ This setup follows these vendor documents.
 - [Tailscale sharing](https://tailscale.com/kb/1084/sharing): sharing one machine and `autogroup:shared`.
 - [Tailscale Linux install](https://tailscale.com/download/linux).
 - [Docker port publishing](https://docs.docker.com/engine/network/port-publishing/): localhost binding and the pre-28 exposure issue.
+- [Docker restart policies](https://docs.docker.com/engine/containers/start-containers-automatically/): `unless-stopped` and daemon restarts.
+- [Compose `depends_on`](https://docs.docker.com/reference/compose-file/services/#depends_on): `condition`, and `restart`, which excludes the runtime's own restarts.
+- [Compose `restart`](https://docs.docker.com/reference/cli/docker/compose/restart/) and [`ps`](https://docs.docker.com/reference/cli/docker/compose/ps/): `--no-deps`, restart applies no configuration change, JSON output.
+- [systemd units](https://www.freedesktop.org/software/systemd/man/latest/systemd.unit.html): `WantsMountsFor=` (systemd 256+), `Requires=` stop propagation, `Requisite=` and drop-in files.
+- [systemd mounts](https://www.freedesktop.org/software/systemd/man/latest/systemd.mount.html): a disk mount stops when its device disappears.
 - [Docker Engine install](https://docs.docker.com/engine/install/).
 - [restic backups](https://restic.readthedocs.io/en/stable/040_backup.html) and [installation](https://restic.readthedocs.io/en/stable/020_installation.html).
 - [age](https://github.com/FiloSottile/age).

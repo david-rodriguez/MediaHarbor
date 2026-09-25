@@ -20,6 +20,8 @@ jobs:
         run: python3 tests/smoke_gluetun.py
       - name: Real qBittorrent API integration
         run: python3 tests/smoke_qbittorrent.py
+      - name: Real fault injection and self-healing
+        run: python3 tests/smoke_heal.py
       - name: Real encrypted recovery round trip
         run: |
           image=$(docker compose --env-file config/host.env.example -f docker-compose.yml config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["port-sync"]["image"])')

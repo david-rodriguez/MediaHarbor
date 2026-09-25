@@ -2,7 +2,7 @@
 
 A self-hosted media server that fills itself. Add a movie to your Plex Watchlist, and it shows up in your library, sorted, with artwork and subtitles. Share it with friends and family, and let them ask for what they want to watch.
 
-Everything runs in Docker Compose on one Linux box. Downloads go through **Proton VPN**. Admin screens stay private behind **Tailscale**. Only Plex faces the internet.
+Everything runs in Docker Compose on one Linux box. Downloads go through **Proton VPN**. Admin screens stay private behind **Tailscale**. Only Plex faces the internet. A small host timer restarts apps that stop answering, so you do not have to.
 
 ## How it works
 
@@ -54,7 +54,8 @@ Core apps always run. Each optional app has a Compose profile of the same name. 
 - Every admin port binds to `127.0.0.1`. You reach them over Tailscale or an SSH tunnel.
 - Plex port 32400 is the only port open to the network. Plex signs in every client itself.
 - qBittorrent shares the VPN container's network. If the VPN drops, its traffic stops.
-- No Docker socket mounts, no default passwords, no automatic container updates.
+- No container gets the Docker socket. The self-healing timer runs on the host as root instead.
+- No default passwords and no automatic container updates.
 - Every image is pinned to a digest. Renovate proposes updates for you to review.
 - Credentials live in ignored files under `secrets/`, mounted as Compose secrets.
 - `./harbor check` enforces these rules. CI runs it with a secret scan.
@@ -167,7 +168,7 @@ The qBittorrent username is `admin`, from `secrets/qbit_username`.
 sudo ./harbor prepare
 ```
 
-If `check` prints a problem, fix it and run `check` again. `prepare` creates the app and media folders.
+If `check` prints a problem, fix it and run `check` again. `prepare` creates the app and media folders and writes a marker file into each for [self-healing](docs/operations.md#markers-and-existing-servers). It warns when a storage folder is on the system disk. Ignore that warning on a one-disk server.
 
 > **Portainer users:** stop here and follow [Portainer stacks](docs/portainer.md).
 
@@ -199,9 +200,33 @@ Log in to qBittorrent and lock it down with [private access](docs/access.md#firs
 
 Set a password in each app. Then connect the apps with the [app connections](docs/operations.md#app-connections) table.
 
-### 9. Before you download anything real
+### 9. Turn on self-healing
 
-1. Run the [deployment checks](docs/operations.md#deployment-checks).
+A timer on the server checks the apps on a short interval. It restarts an app that stops working, so you do not have to log in and fix it. It runs on the server, not in a container. [Self-healing](docs/operations.md#self-healing) explains what it fixes and what it cannot.
+
+1. Install and start the timer:
+
+   ```sh
+   sudo install -m 644 config/systemd/harbor-heal.service config/systemd/harbor-heal.timer /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now harbor-heal.timer
+   ```
+
+2. Make Docker wait for your disks at boot. This needs systemd 256 or newer. Run `systemctl --version` to see yours. If it is older, skip this item.
+
+   ```sh
+   sudo install -d /etc/systemd/system/docker.service.d
+   sudo install -m 644 config/systemd/docker-mounts.conf /etc/systemd/system/docker.service.d/mediaharbor.conf
+   sudo nano /etc/systemd/system/docker.service.d/mediaharbor.conf
+   ```
+
+   Replace the two example folders with your `APPDATA_ROOT` and `DATA_ROOT` from `config/host.env`. Save. Then run `sudo systemctl daemon-reload`. `systemctl list-dependencies docker.service` must now list a `.mount` unit for each folder.
+
+3. Check that the timer is scheduled with `systemctl list-timers harbor-heal.timer`. [Watch it work](docs/operations.md#watch-it-work) shows how to see what the healer does.
+
+### 10. Before you download anything real
+
+1. Run the [deployment checks](docs/operations.md#deployment-checks), which include the self-healing drills.
 2. Set up [encrypted backups](docs/recovery.md) and do one restore drill.
 3. Optional: [share with friends and family](docs/sharing.md).
 
@@ -238,7 +263,7 @@ Media in `DATA_ROOT` is not in the app backup. Protect it separately. See [recov
 
 - [Private access](docs/access.md): Tailscale, SSH tunnels, access policy.
 - [Sharing](docs/sharing.md): friends, family, requests and Watchlists.
-- [Operations](docs/operations.md): app connections, health checks, updates.
+- [Operations](docs/operations.md): app connections, self-healing, updates.
 - [Recovery](docs/recovery.md): backups and rebuilds.
 - [Portainer stacks](docs/portainer.md): optional, run the stack from Portainer.
 - [Sources](docs/sources.md): vendor documentation this setup follows.
