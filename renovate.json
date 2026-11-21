@@ -3,7 +3,9 @@
   "extends": ["config:recommended", "docker:pinDigests"],
   "enabledManagers": ["docker-compose", "github-actions"],
   "automerge": false,
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "prConcurrentLimit": 3,
   "packageRules": [
     {
