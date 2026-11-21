@@ -25,7 +25,7 @@ x-healthcheck: &healthcheck
 services:
   gluetun:
     <<: *common
-    image: qmcgaw/gluetun:latest@sha256:6bdf70ced4f3ea33b9091f3af7a710b47be003673b6ea94abfeed3343a580d8c
+    image: qmcgaw/gluetun:latest@sha256:3c43ec327d7ab2b5f1dc798b92a7640de9a1e1b74a81c9a5143adb383c03d28b
     cap_add: [NET_ADMIN]
     devices: [/dev/net/tun:/dev/net/tun]
     environment:
@@ -52,7 +52,7 @@ services:
 
   qbittorrent:
     <<: *common
-    image: lscr.io/linuxserver/qbittorrent:latest@sha256:8d48fa8c619caadfb103f04efea8747e2a2762d6c7551690919cffb987e61cee
+    image: lscr.io/linuxserver/qbittorrent:latest@sha256:3d4c4545d51a690a0df15a2ff99038823a88a9822df8e794526447b9afbd7384
     network_mode: service:gluetun
     depends_on:
       gluetun:
@@ -70,7 +70,7 @@ services:
 
   port-sync:
     <<: *common
-    image: python:3.14-alpine@sha256:c6ead215bfd31f1e433d968853b7a769989117115b728874824e6c0a27cb96fc
+    image: python:3.14-alpine@sha256:5862d971d1f0ae26b258cefa4e893556b1d3aba81bd2ff30888704ad378bab67
     network_mode: service:gluetun
     depends_on:
       gluetun:
@@ -96,7 +96,7 @@ services:
 
   sonarr:
     <<: *common
-    image: lscr.io/linuxserver/sonarr:latest@sha256:82172b363f9eddc02aca544f880a044f2ceb9aaf190bc87e4454e2f705eb91d0
+    image: lscr.io/linuxserver/sonarr:latest@sha256:339814bbf50599ac3b59077c252f29833d0138b59a062d0e82ce37bdc7f04f86
     environment: *lsio-env
     volumes:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/sonarr:/config
@@ -108,7 +108,7 @@ services:
 
   radarr:
     <<: *common
-    image: lscr.io/linuxserver/radarr:latest@sha256:95ba0801df4d9d1d79d0d9a3849f656542497dab061d91b87ad4f53a71aff3ef
+    image: lscr.io/linuxserver/radarr:latest@sha256:044788f5508b7f67a3e0368cdd142c77c4d4cd5aec2efaba53e1a68b6b6231e7
     environment: *lsio-env
     volumes:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/radarr:/config
@@ -120,7 +120,7 @@ services:
 
   prowlarr:
     <<: *common
-    image: lscr.io/linuxserver/prowlarr:latest@sha256:c7502a75b021d964481c129c84590b9cbc40f83aadd4e553f173871bc0deaa3c
+    image: lscr.io/linuxserver/prowlarr:latest@sha256:45117ba8439e2337a92ffe38a451a4dafc0be771754d05d88cdf102419d09646
     environment: *lsio-env
     volumes:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/prowlarr:/config
@@ -131,7 +131,7 @@ services:
 
   bazarr:
     <<: *common
-    image: lscr.io/linuxserver/bazarr:latest@sha256:84b6f05a7a4194fafe5a0bec062d32f6ae9ea74db33d43d678cb9a3191f31c24
+    image: lscr.io/linuxserver/bazarr:latest@sha256:e0c5d45965242830c5eeddaafe9ae2b5e8ca3f6c01ecda9ee9364f550921dc50
     environment: *lsio-env
     volumes:
       - ${APPDATA_ROOT:?Set APPDATA_ROOT}/bazarr:/config
@@ -143,7 +143,7 @@ services:
 
   seerr:
     <<: *common
-    image: ghcr.io/seerr-team/seerr:latest@sha256:f4768de5f616248d723e05891f3345a1402123775d03bf0890dbfedc0831bda1
+    image: ghcr.io/seerr-team/seerr:latest@sha256:aadee014b40e28cf9aa4928bc9d1183a6eb08f8c44d543cddc9efdcb16549be2
     init: true
     environment:
       TZ: ${TZ:-America/New_York}
@@ -156,7 +156,7 @@ services:
 
   plex:
     <<: *common
-    image: lscr.io/linuxserver/plex:latest@sha256:1f6f97d76e7bdb013789e94c838f2d9133b01ee4b2d4194148e492c4e4f12d90
+    image: lscr.io/linuxserver/plex:latest@sha256:9a1325bf0b34a50993a04be0bdcc7fab841d2a78161bd11b4db4ff8478a7ac2a
     environment:
       <<: *lsio-env
       VERSION: docker
@@ -176,7 +176,7 @@ services:
 
   jellyfin:
     <<: *common
-    image: lscr.io/linuxserver/jellyfin:latest@sha256:0f42497a69fa0441bfd5f9d6bba8694f2a656ec984e571d0ac04c6dd91250039
+    image: lscr.io/linuxserver/jellyfin:latest@sha256:b10044530553b2506f06279bf0b5223f9534f434f87a277da4b8fa8ac386cb58
     profiles: [jellyfin]
     environment: *lsio-env
     volumes:
@@ -189,7 +189,7 @@ services:
 
   lidarr:
     <<: *common
-    image: lscr.io/linuxserver/lidarr:latest@sha256:8ab0fd370b604ae034d9a9c261a9d8d873bece33d9736852e7ce4f3566e4a35d
+    image: lscr.io/linuxserver/lidarr:latest@sha256:8fb40ada166dd1880cb1b166df5bcbb081107523f20ab60df05c313e2052a467
     profiles: [lidarr]
     environment: *lsio-env
     volumes:
@@ -202,7 +202,7 @@ services:
 
   sabnzbd:
     <<: *common
-    image: lscr.io/linuxserver/sabnzbd:latest@sha256:948ea3dc45d68943ec14b33ba37ffa1488da3e9837bf3ca0f75621e971614d85
+    image: lscr.io/linuxserver/sabnzbd:latest@sha256:d225bbab93f54784c115a3b1d89711e469b1969c9f32aa6ebb11fb03b5804431
     profiles: [sabnzbd]
     environment: *lsio-env
     volumes:
@@ -229,7 +229,7 @@ services:
 
   audiobookshelf:
     <<: *common
-    image: ghcr.io/advplyr/audiobookshelf:latest@sha256:180acad33d69c99ed208676465d8edcb268fa46967735579a7810859885b1a8e
+    image: ghcr.io/advplyr/audiobookshelf:latest@sha256:60064c23f32fd9099fd39e82c5132c51701d1221135bbca04cd099b589e1edc3
     profiles: [audiobookshelf]
     user: ${PUID:-1000}:${PGID:-1000}
     environment:
@@ -247,7 +247,7 @@ services:
 
   homepage:
     <<: *common
-    image: ghcr.io/gethomepage/homepage:latest@sha256:f820276654539cdc2cf0169f28188d135919a7984fad76d83d8d5ff1383f3705
+    image: ghcr.io/gethomepage/homepage:latest@sha256:019d8f063a7299e7c1c51ee4a70b692291809af3244894fbec2c2ac7d1f71b18
     profiles: [homepage]
     environment:
       HOMEPAGE_ALLOWED_HOSTS: ${HOMEPAGE_ALLOWED_HOSTS:-localhost:3000}
@@ -261,7 +261,7 @@ services:
 
   tautulli:
     <<: *common
-    image: lscr.io/linuxserver/tautulli:latest@sha256:e35570d636471f8aabfac7044057712679f954844a763ba735baa9659ea142b5
+    image: lscr.io/linuxserver/tautulli:latest@sha256:5e8f80cc18f03c606a3567c8a9b37d80812ed8017d2e2f8ff2e2a91b54a3aef1
     profiles: [tautulli]
     environment: *lsio-env
     volumes:
@@ -283,7 +283,7 @@ services:
 
   recyclarr:
     <<: *common
-    image: ghcr.io/recyclarr/recyclarr:8@sha256:6e69e009e1cd7493ff6093e8e187b5d3788c75b4a2c0c5127b6a1beda1c19728
+    image: ghcr.io/recyclarr/recyclarr:8@sha256:3e9c41b9ec29bbf65fe846864058730d321a21f7695d8c0d9437b73e34d50ad9
     profiles: [recyclarr]
     user: ${PUID:-1000}:${PGID:-1000}
     environment:
@@ -294,7 +294,7 @@ services:
 
   unpackerr:
     <<: *common
-    image: ghcr.io/unpackerr/unpackerr:latest@sha256:406586865431b40b29353d899fb75a788f5384743f7f381444db5fe55d206914
+    image: ghcr.io/unpackerr/unpackerr:latest@sha256:22b4693fbeaae4bd927905d63b59b8f67b4a1446682d965ac876c61a48976658
     profiles: [unpackerr]
     user: ${PUID:-1000}:${PGID:-1000}
     environment:
