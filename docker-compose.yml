@@ -25,7 +25,7 @@ x-healthcheck: &healthcheck
 services:
   gluetun:
     <<: *common
-    image: qmcgaw/gluetun:latest@sha256:3c43ec327d7ab2b5f1dc798b92a7640de9a1e1b74a81c9a5143adb383c03d28b
+    image: qmcgaw/gluetun:latest@sha256:6d21823e204e99adbb0aa811105504514d16150cc5299f443f191c28792fcf4b
     cap_add: [NET_ADMIN]
     devices: [/dev/net/tun:/dev/net/tun]
     environment:
@@ -52,7 +52,7 @@ services:
 
   qbittorrent:
     <<: *common
-    image: lscr.io/linuxserver/qbittorrent:latest@sha256:3d4c4545d51a690a0df15a2ff99038823a88a9822df8e794526447b9afbd7384
+    image: lscr.io/linuxserver/qbittorrent:latest@sha256:1fa2f9692501f27ce51c4fffd771d63ec38f1163cb648941c324344b7c5a3915
     network_mode: service:gluetun
     depends_on:
       gluetun:
